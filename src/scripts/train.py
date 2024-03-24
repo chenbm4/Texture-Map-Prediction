@@ -71,7 +71,7 @@ print("Train and validation data loaders created.")
 model = UNet(n_channels=3, n_classes=3, bilinear=False).to(config["device"])
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=config["learning_rate"])
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=5)
+# scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=5)
 
 print("Model initialized:", model)
 
@@ -153,13 +153,13 @@ train_summary_writer.add_graph(model, dummy_input)
 
 # Main training loop
 best_loss = np.inf
-epochs_no_improve = 0
+# epochs_no_improve = 0
 
 print("Training started")
 for epoch in tqdm(range(config["epochs"])):
     train_loss = train_epoch(epoch)
     val_loss = val_epoch(epoch)
-    scheduler.step(val_loss)
+    # scheduler.step(val_loss)
 
     print(f"Epoch: {epoch + 1}/{config['epochs']}, Train Loss: {train_loss}, Val Loss: {val_loss}")
 
@@ -168,12 +168,12 @@ for epoch in tqdm(range(config["epochs"])):
         best_loss = val_loss
         best_model_wts = copy.deepcopy(model.state_dict())
         save_checkpoint(epoch, model, optimizer, os.path.join(config["checkpoint_dir"], 'best_checkpoint.pth'))
-        epochs_no_improve = 0
-    else:
-        epochs_no_improve += 1
-        if epochs_no_improve == config["early_stopping_patience"]:
-            print("Early stopping triggered")
-            break
+        # epochs_no_improve = 0
+    # else:
+    #     epochs_no_improve += 1
+    #     if epochs_no_improve == config["early_stopping_patience"]:
+    #         print("Early stopping triggered")
+    #         break
 
 model.load_state_dict(best_model_wts)
 train_summary_writer.close()
