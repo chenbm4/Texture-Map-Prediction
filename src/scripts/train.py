@@ -16,14 +16,20 @@ sys.path.append('src/')
 from models.unet_model import UNet
 from datasets.my_dataset import MyDataset
 
+# Check for multiple GPUs
+if torch.cuda.device_count() > 1:
+    print(f"Let's use {torch.cuda.device_count()} GPUs!")
+    use_multi_gpu = True
+else:
+    use_multi_gpu = False
 
 config = {
-    "epochs": 100,
-    "batch_size": 4,
-    "learning_rate": 0.001,
+    "epochs": 200,
+    "batch_size": 16,
+    "learning_rate": 3e-4,
     "val_split": 0.1,
-    "dataset_path": "data/processed/small/",
-    "checkpoint_dir": "checkpoints/",
+    "dataset_path": "data/processed/full/train/",
+    "checkpoint_dir": "checkpoints/full/256/",
     # "early_stopping_patience": 3,
     "log_dir": "logs/",
     "log_interval": 1,
@@ -41,7 +47,7 @@ val_summary_writer = SummaryWriter(val_log_dir)
 
 # Create the dataset
 transform = transforms.Compose([
-    transforms.Resize((512, 512)),
+    transforms.Resize((256, 256)),
     transforms.ToTensor(),
 ])
 
@@ -68,10 +74,16 @@ val_loader = DataLoader(val_dataset, batch_size=config["batch_size"], shuffle=Fa
 print("Train and validation data loaders created.")
 
 # Model setup
-model = UNet(n_channels=3, n_classes=3, bilinear=False).to(config["device"])
+model = UNet(n_channels=3, n_classes=3, bilinear=False)
+
+if use_multi_gpu:
+    model = nn.DataParallel(model)
+
+model.to(config["device"])
+
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=config["learning_rate"])
-# scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=5)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10)
 
 print("Model initialized:", model)
 
@@ -141,14 +153,13 @@ def val_epoch(epoch_index):
 def save_checkpoint(epoch, model, optimizer, filename):
     checkpoint = {
         'epoch': epoch + 1,
-        'state_dict': model.state_dict(),
+        'state_dict': model.module.state_dict() if use_multi_gpu else model.state_dict(),
         'optimizer': optimizer.state_dict()
     }
-
     torch.save(checkpoint, filename)
 
 # TensorBoard Graph
-dummy_input = torch.randn(1, 3, 512, 512).to(config["device"])
+dummy_input = torch.randn(1, 3, 256, 256).to(config["device"])
 train_summary_writer.add_graph(model, dummy_input)
 
 # Main training loop
@@ -159,7 +170,7 @@ print("Training started")
 for epoch in tqdm(range(config["epochs"])):
     train_loss = train_epoch(epoch)
     val_loss = val_epoch(epoch)
-    # scheduler.step(val_loss)
+    scheduler.step(val_loss)
 
     print(f"Epoch: {epoch + 1}/{config['epochs']}, Train Loss: {train_loss}, Val Loss: {val_loss}")
 
