@@ -39,7 +39,8 @@ config = {
 print("Configuration:", config)
 
 # Initialize TensorBoard
-current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+# current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+current_time = '20240329-221351'
 train_log_dir = os.path.join(config["log_dir"], current_time, 'train')
 val_log_dir = os.path.join(config["log_dir"], current_time, 'val')
 train_summary_writer = SummaryWriter(train_log_dir)
@@ -158,6 +159,24 @@ def save_checkpoint(epoch, model, optimizer, filename):
     }
     torch.save(checkpoint, filename)
 
+def load_checkpoint(filepath, model, optimizer, scheduler=None):
+    if os.path.isfile(filepath):
+        print(f"Loading checkpoint '{filepath}'")
+        checkpoint = torch.load(filepath)
+
+        start_epoch = checkpoint['epoch']
+        model.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        if scheduler is not None and 'scheduler' in checkpoint:
+            scheduler.load_state_dict(checkpoint['scheduler'])
+
+        print(f"Loaded checkpoint '{filepath}' (epoch {start_epoch})")
+    else:
+        print(f"No checkpoint found at '{filepath}'")
+        start_epoch = 0
+
+    return model, optimizer, scheduler, start_epoch
+
 # TensorBoard Graph
 dummy_input = torch.randn(1, 3, 256, 256).to(config["device"])
 train_summary_writer.add_graph(model, dummy_input)
@@ -166,8 +185,11 @@ train_summary_writer.add_graph(model, dummy_input)
 best_loss = np.inf
 # epochs_no_improve = 0
 
+checkpoint_path = os.path.join(config["checkpoint_dir"], 'best_checkpoint.pth')
+model, optimizer, scheduler, start_epoch = load_checkpoint(checkpoint_path, model, optimizer, scheduler)
+
 print("Training started")
-for epoch in tqdm(range(config["epochs"])):
+for epoch in tqdm(range(start_epoch, config["epochs"])):
     train_loss = train_epoch(epoch)
     val_loss = val_epoch(epoch)
     scheduler.step(val_loss)
