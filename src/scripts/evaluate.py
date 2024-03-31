@@ -21,6 +21,15 @@ config = {
     "output_folder": "predictions/256_mse/"
 }
 
+# Create folders for inputs, outputs, and predictions
+input_folder = os.path.join(config["output_folder"], "inputs")
+output_folder = os.path.join(config["output_folder"], "outputs")
+prediction_folder = os.path.join(config["output_folder"], "predictions")
+
+os.makedirs(input_folder, exist_ok=True)
+os.makedirs(output_folder, exist_ok=True)
+os.makedirs(prediction_folder, exist_ok=True)
+
 # Load the test dataset
 transform = transforms.Compose([
     transforms.Resize((256, 256)),
@@ -55,15 +64,18 @@ def evaluate():
             loss = criterion(outputs, labels)
             running_loss += loss.item()
             
-            for j, output in enumerate(outputs):
-                save_image(output, f"{i * config['batch_size'] + j}.png")
+            for j in range(inputs.size(0)):
+                file_index = i * config['batch_size'] + j
+                save_image(inputs[j], os.path.join(input_folder, f"{file_index}.png"))
+                save_image(outputs[j], os.path.join(output_folder, f"{file_index}.png"))
+                save_image(labels[j], os.path.join(prediction_folder, f"{file_index}.png"))
 
     average_loss = running_loss / len(test_loader)
     print(f"Test Loss: {average_loss}")
 
 def save_image(tensor, filename):
     img = transforms.ToPILImage()(tensor.cpu().data)
-    img.save(os.path.join(config["output_folder"], filename))
+    img.save(filename)
 
 # Run evaluation
 evaluate()
