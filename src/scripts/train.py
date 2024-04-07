@@ -12,6 +12,8 @@ from PIL import Image
 import numpy as np
 from tqdm import tqdm
 
+from piqa import SSIM
+
 sys.path.append('src/')
 from models.unet_model import UNet
 from datasets.my_dataset import MyDataset
@@ -29,7 +31,7 @@ config = {
     "learning_rate": 3e-4,
     "val_split": 0.1,
     "dataset_path": "data/processed/full/train/",
-    "checkpoint_dir": "checkpoints/full/256/",
+    "checkpoint_dir": "checkpoints/full/256_ssim/",
     # "early_stopping_patience": 3,
     "log_dir": "logs/",
     "log_interval": 1,
@@ -40,7 +42,7 @@ print("Configuration:", config)
 
 # Initialize TensorBoard
 # current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-current_time = '20240329-221351'
+current_time = "20240331-013311"
 train_log_dir = os.path.join(config["log_dir"], current_time, 'train')
 val_log_dir = os.path.join(config["log_dir"], current_time, 'val')
 train_summary_writer = SummaryWriter(train_log_dir)
@@ -82,7 +84,9 @@ if use_multi_gpu:
 
 model.to(config["device"])
 
-criterion = nn.MSELoss()
+# Define SSIM Loss Function
+ssim = SSIM().to(config["device"])
+criterion = lambda x, y: 1 - ssim(x, y)
 optimizer = optim.Adam(model.parameters(), lr=config["learning_rate"])
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10)
 
@@ -97,6 +101,7 @@ def train_epoch(epoch_index):
         inputs, labels = inputs.to(config["device"]), labels.to(config["device"])
         optimizer.zero_grad()
         outputs = model(inputs)
+        outputs = torch.clamp(outputs, min=0, max=1)
         loss = criterion(outputs, labels)
         loss.backward()
         
@@ -133,6 +138,7 @@ def val_epoch(epoch_index):
         for inputs, labels in val_loader:
             inputs, labels = inputs.to(config["device"]), labels.to(config["device"])
             outputs = model(inputs)
+            outputs = torch.clamp(outputs, min=0, max=1)
             loss = criterion(outputs, labels)
             running_loss += loss.item()
 
