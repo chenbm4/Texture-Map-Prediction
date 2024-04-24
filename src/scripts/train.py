@@ -23,7 +23,7 @@ config = {
     "batch_size": 4,
     "learning_rate": 0.001,
     "val_split": 0.1,
-    "dataset_path": "data/processed/small/",
+    "dataset_path": "data/processed/full/test/",
     "checkpoint_dir": "checkpoints/",
     # "early_stopping_patience": 3,
     "log_dir": "logs/",
