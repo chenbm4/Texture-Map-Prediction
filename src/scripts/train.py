@@ -46,6 +46,7 @@ log_writer = SummaryWriter(log_dir)
 transform = transforms.Compose([
     transforms.Resize((512, 512)),
     transforms.ToTensor(),
+    transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 ])
 
 dataset = MyDataset(
