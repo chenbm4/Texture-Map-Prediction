@@ -1,6 +1,6 @@
 import unittest
 import torch
-from models.import_gan import Generator, Discriminator
+from models.import_gan import Generator, Discriminator  # Adjust this import based on your actual module paths
 
 class TestGenerator(unittest.TestCase):
     def setUp(self):

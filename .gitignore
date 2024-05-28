@@ -2,5 +2,6 @@ data/processed/
 data/raw/
 .env/
 logs/
+repo/
 **/__pycache__/
 checkpoints/
